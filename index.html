@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Tareas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <style>
+        body {
+            background: linear-gradient(to bottom, #e3e6e8, #bfc9d1);
+            color: #333;
+        }
+        .task-item {
+            transition: all 0.3s ease-in-out;
+        }
+        .task-item:hover {
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-6 relative font-sans">
+    <button id="showCompleted" class="fixed top-4 right-4 bg-gray-700 text-white px-4 py-2 rounded shadow-lg hover:bg-gray-900">Ver Completadas</button>
+    
+    <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md relative mt-10 border border-gray-300">
+        <h1 class="text-2xl font-bold text-center text-gray-700 mb-4">Lista de Tareas</h1>
+        
+        <div class="w-full bg-gray-300 rounded-full h-4 mb-4">
+            <div id="progressBar" class="bg-gray-700 h-4 rounded-full" style="width: 0%;"></div>
+        </div>
+        <p id="motivationText" class="text-center text-gray-600 font-semibold mb-4">¡Comienza a completar tus tareas!</p>
+        
+        <div class="flex mb-4">
+            <input id="taskInput" type="text" class="flex-grow p-2 border border-gray-400 rounded-l-md focus:outline-none focus:ring-2 focus:ring-gray-700" placeholder="Nueva tarea...">
+            <button id="addTask" class="bg-gray-700 text-white px-4 rounded-r-md hover:bg-gray-900">Agregar</button>
+        </div>
+        <ul id="taskList" class="space-y-2"></ul>
+    </div>
+    
+    <div id="completedModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md relative border border-gray-300">
+            <h2 class="text-xl font-bold text-gray-700">Tareas Completadas</h2>
+            <button id="closeModal" class="absolute top-2 right-2 text-gray-500">&times;</button>
+            <div id="completedTasks"></div>
+        </div>
+    </div>
+    
+    <script>
+        $(document).ready(function() {
+            let totalTasks = 0;
+            let completedTasks = 0;
+
+            function updateProgress() {
+                let progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+                $("#progressBar").css("width", progress + "%");
+                updateMotivationText(progress);
+            }
+
+            function updateMotivationText(progress) {
+                let message = "¡Comienza a completar tus tareas!";
+                if (progress >= 100) message = "¡Increíble! Has completado todas tus tareas.";
+                else if (progress >= 75) message = "¡Estás muy cerca! Sigue así.";
+                else if (progress >= 50) message = "¡Ya llevas la mitad! No te detengas.";
+                else if (progress >= 25) message = "Buen comienzo, sigue avanzando.";
+                $("#motivationText").text(message);
+            }
+            
+            function addTask() {
+                let taskText = $('#taskInput').val().trim();
+                if (taskText !== '') {
+                    totalTasks++;
+                    let taskItem = $(`
+                        <li class='task-item flex justify-between items-center p-2 bg-gray-200 rounded border border-gray-400'>
+                            <label class='flex items-center space-x-2'>
+                                <input type='checkbox' class='completeTask'>
+                                <span>${taskText}</span>
+                            </label>
+                        </li>`);
+                    
+                    $('#taskList').append(taskItem);
+                    anime({ targets: taskItem[0], opacity: [0, 1], duration: 500 });
+                    $('#taskInput').val('');
+                    updateProgress();
+                }
+            }
+            
+            $('#addTask').click(addTask);
+            
+            $('#taskInput').keypress(function(event) {
+                if (event.which === 13) { // Enter key
+                    addTask();
+                }
+            });
+            
+            $(document).on('change', '.completeTask', function() {
+                let taskItem = $(this).closest('li');
+                let completedText = taskItem.find('span').text();
+                let date = new Date().toLocaleDateString();
+                let completedSection = $('#completedTasks').find(`[data-date='${date}']`);
+                
+                completedTasks++;
+                updateProgress();
+                
+                if (completedSection.length === 0) {
+                    completedSection = $(`<div data-date='${date}' class='mt-4'><h3 class='text-lg font-bold'>${date}</h3><ul class='list-disc pl-6'></ul></div>`);
+                    $('#completedTasks').append(completedSection);
+                }
+                
+                completedSection.find('ul').append(`<li>${completedText}</li>`);
+                anime({ targets: taskItem[0], opacity: [1, 0], duration: 500, complete: function() { taskItem.remove(); } });
+            });
+            
+            $('#showCompleted').click(function() {
+                $('#completedModal').removeClass('hidden');
+            });
+            
+            $('#closeModal').click(function() {
+                $('#completedModal').addClass('hidden');
+            });
+        });
+    </script>
+</body>
+</html>
