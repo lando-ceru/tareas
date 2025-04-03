@@ -3,122 +3,345 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lista de Tareas</title>
+    <title>Lista de Tareas Zen</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Anime.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
     <style>
-        body {
-            background: linear-gradient(to bottom, #e3e6e8, #bfc9d1);
-            color: #333;
-        }
         .task-item {
-            transition: all 0.3s ease-in-out;
+            transition: all 0.3s ease;
         }
-        .task-item:hover {
-            transform: scale(1.02);
+        .completed {
+            transform: translateX(20px);
+            opacity: 0;
+            height: 0;
+            padding: 0;
+            margin: 0;
+            border: 0;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center p-6 relative font-sans">
-    <button id="showCompleted" class="fixed top-4 right-4 bg-gray-700 text-white px-4 py-2 rounded shadow-lg hover:bg-gray-900">Ver Completadas</button>
-    
-    <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md relative mt-10 border border-gray-300">
-        <h1 class="text-2xl font-bold text-center text-gray-700 mb-4">Lista de Tareas</h1>
-        
-        <div class="w-full bg-gray-300 rounded-full h-4 mb-4">
-            <div id="progressBar" class="bg-gray-700 h-4 rounded-full" style="width: 0%;"></div>
+<body class="gradient-bg min-h-screen font-sans antialiased">
+    <div class="container mx-auto px-4 py-8 max-w-3xl">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-indigo-800 mb-2">Lista de Tareas Zen</h1>
+            <p class="text-indigo-600">Organiza tu día con calma y propósito</p>
+        </header>
+
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8 transition-all duration-300 hover:shadow-xl">
+            <div class="flex mb-4">
+                <input type="text" id="taskInput" placeholder="¿Qué necesitas hacer hoy?" 
+                       class="flex-grow px-4 py-3 rounded-l-lg border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent">
+                <button id="addTaskBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-r-lg transition duration-300">
+                    <i class="fas fa-plus mr-2"></i>Agregar
+                </button>
+            </div>
+            
+            <div class="flex justify-between mb-4">
+                <div>
+                    <button id="showCompletedBtn" class="text-indigo-600 hover:text-indigo-800 mr-4">
+                        <i class="fas fa-history mr-2"></i>Ver completadas
+                    </button>
+                    <span id="taskCount" class="text-gray-600">0 tareas pendientes</span>
+                </div>
+                <button id="clearCompletedBtn" class="text-red-500 hover:text-red-700">
+                    <i class="fas fa-trash-alt mr-2"></i>Limpiar completadas
+                </button>
+            </div>
+            
+            <div id="taskList" class="space-y-3"></div>
         </div>
-        <p id="motivationText" class="text-center text-gray-600 font-semibold mb-4">¡Comienza a completar tus tareas!</p>
-        
-        <div class="flex mb-4">
-            <input id="taskInput" type="text" class="flex-grow p-2 border border-gray-400 rounded-l-md focus:outline-none focus:ring-2 focus:ring-gray-700" placeholder="Nueva tarea...">
-            <button id="addTask" class="bg-gray-700 text-white px-4 rounded-r-md hover:bg-gray-900">Agregar</button>
+
+        <div id="completedTasksSection" class="hidden bg-white rounded-xl shadow-lg p-6">
+            <h2 class="text-2xl font-semibold text-indigo-800 mb-4 flex items-center">
+                <i class="fas fa-check-circle mr-3 text-green-500"></i>Tareas Completadas
+            </h2>
+            <div id="completedTasksList" class="space-y-3"></div>
         </div>
-        <ul id="taskList" class="space-y-2"></ul>
     </div>
-    
-    <div id="completedModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center hidden">
-        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md relative border border-gray-300">
-            <h2 class="text-xl font-bold text-gray-700">Tareas Completadas</h2>
-            <button id="closeModal" class="absolute top-2 right-2 text-gray-500">&times;</button>
-            <div id="completedTasks"></div>
-        </div>
-    </div>
-    
+
     <script>
         $(document).ready(function() {
-            let totalTasks = 0;
-            let completedTasks = 0;
-
-            function updateProgress() {
-                let progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-                $("#progressBar").css("width", progress + "%");
-                updateMotivationText(progress);
-            }
-
-            function updateMotivationText(progress) {
-                let message = "¡Comienza a completar tus tareas!";
-                if (progress >= 100) message = "¡Increíble! Has completado todas tus tareas.";
-                else if (progress >= 75) message = "¡Estás muy cerca! Sigue así.";
-                else if (progress >= 50) message = "¡Ya llevas la mitad! No te detengas.";
-                else if (progress >= 25) message = "Buen comienzo, sigue avanzando.";
-                $("#motivationText").text(message);
-            }
+            // Animación inicial
+            anime({
+                targets: 'header h1',
+                translateY: [-20, 0],
+                opacity: [0, 1],
+                duration: 800,
+                easing: 'easeOutExpo'
+            });
             
-            function addTask() {
-                let taskText = $('#taskInput').val().trim();
-                if (taskText !== '') {
-                    totalTasks++;
-                    let taskItem = $(`
-                        <li class='task-item flex justify-between items-center p-2 bg-gray-200 rounded border border-gray-400'>
-                            <label class='flex items-center space-x-2'>
-                                <input type='checkbox' class='completeTask'>
-                                <span>${taskText}</span>
-                            </label>
-                        </li>`);
+            anime({
+                targets: 'header p',
+                translateY: [20, 0],
+                opacity: [0, 1],
+                duration: 800,
+                delay: 300,
+                easing: 'easeOutExpo'
+            });
+            
+            // Cargar tareas del localStorage
+            let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+            let completedTasks = JSON.parse(localStorage.getItem('completedTasks')) || [];
+            
+            // Mostrar tareas
+            function renderTasks() {
+                $('#taskList').empty();
+                $('#completedTasksList').empty();
+                
+                // Contar tareas pendientes
+                const pendingTasks = tasks.filter(task => !task.completed).length;
+                $('#taskCount').text(`${pendingTasks} ${pendingTasks === 1 ? 'tarea pendiente' : 'tareas pendientes'}`);
+                
+                // Mostrar tareas pendientes
+                tasks.forEach((task, index) => {
+                    if (!task.completed) {
+                        const taskElement = $(`
+                            <div class="task-item flex items-center justify-between bg-indigo-50 rounded-lg p-4 fade-in">
+                                <div class="flex items-center">
+                                    <button class="complete-btn mr-3 w-6 h-6 rounded-full border-2 border-indigo-400 flex items-center justify-center hover:bg-indigo-100 transition">
+                                        <i class="fas fa-check text-indigo-600 text-xs opacity-0"></i>
+                                    </button>
+                                    <span class="task-text">${task.text}</span>
+                                </div>
+                                <button class="delete-btn text-gray-400 hover:text-red-500 transition">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        `);
+                        
+                        taskElement.data('index', index);
+                        $('#taskList').append(taskElement);
+                        
+                        // Animación hover para el botón de completar
+                        taskElement.find('.complete-btn').hover(
+                            function() {
+                                $(this).find('i').css('opacity', '0.5');
+                            },
+                            function() {
+                                if (!task.completed) {
+                                    $(this).find('i').css('opacity', '0');
+                                }
+                            }
+                        );
+                    }
+                });
+                
+                // Mostrar tareas completadas agrupadas por fecha
+                if (completedTasks.length > 0) {
+                    const groupedByDate = {};
                     
-                    $('#taskList').append(taskItem);
-                    anime({ targets: taskItem[0], opacity: [0, 1], duration: 500 });
-                    $('#taskInput').val('');
-                    updateProgress();
+                    completedTasks.forEach(task => {
+                        const date = task.completionDate || 'Sin fecha';
+                        if (!groupedByDate[date]) {
+                            groupedByDate[date] = [];
+                        }
+                        groupedByDate[date].push(task);
+                    });
+                    
+                    for (const date in groupedByDate) {
+                        const dateHeader = $(`
+                            <div class="text-sm font-medium text-gray-500 mt-4 mb-2 flex items-center">
+                                <i class="far fa-calendar-check mr-2"></i>${date}
+                            </div>
+                        `);
+                        $('#completedTasksList').append(dateHeader);
+                        
+                        groupedByDate[date].forEach(task => {
+                            const completedTaskElement = $(`
+                                <div class="completed-task-item flex items-center bg-green-50 rounded-lg p-3 pl-6 opacity-90">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-check-circle mr-3 text-green-500"></i>
+                                        <span class="task-text line-through text-gray-600">${task.text}</span>
+                                    </div>
+                                </div>
+                            `);
+                            $('#completedTasksList').append(completedTaskElement);
+                        });
+                    }
+                } else {
+                    $('#completedTasksList').html('<p class="text-gray-500 text-center py-4">No hay tareas completadas aún</p>');
                 }
+                
+                // Guardar en localStorage
+                localStorage.setItem('tasks', JSON.stringify(tasks));
+                localStorage.setItem('completedTasks', JSON.stringify(completedTasks));
             }
             
-            $('#addTask').click(addTask);
-            
-            $('#taskInput').keypress(function(event) {
-                if (event.which === 13) { // Enter key
-                    addTask();
+            // Agregar nueva tarea
+            $('#addTaskBtn').click(function() {
+                const taskText = $('#taskInput').val().trim();
+                if (taskText) {
+                    tasks.push({
+                        text: taskText,
+                        completed: false,
+                        createdAt: new Date().toISOString()
+                    });
+                    
+                    $('#taskInput').val('');
+                    renderTasks();
+                    
+                    // Animación al agregar
+                    const lastTask = $('#taskList .task-item').last();
+                    anime({
+                        targets: lastTask[0],
+                        opacity: [0, 1],
+                        translateY: [20, 0],
+                        duration: 500,
+                        easing: 'easeOutExpo'
+                    });
                 }
             });
             
-            $(document).on('change', '.completeTask', function() {
-                let taskItem = $(this).closest('li');
-                let completedText = taskItem.find('span').text();
-                let date = new Date().toLocaleDateString();
-                let completedSection = $('#completedTasks').find(`[data-date='${date}']`);
-                
-                completedTasks++;
-                updateProgress();
-                
-                if (completedSection.length === 0) {
-                    completedSection = $(`<div data-date='${date}' class='mt-4'><h3 class='text-lg font-bold'>${date}</h3><ul class='list-disc pl-6'></ul></div>`);
-                    $('#completedTasks').append(completedSection);
+            // También agregar con Enter
+            $('#taskInput').keypress(function(e) {
+                if (e.which === 13) {
+                    $('#addTaskBtn').click();
                 }
+            });
+            
+            // Completar tarea
+            $('#taskList').on('click', '.complete-btn', function() {
+                const taskElement = $(this).closest('.task-item');
+                const index = taskElement.data('index');
                 
-                completedSection.find('ul').append(`<li>${completedText}</li>`);
-                anime({ targets: taskItem[0], opacity: [1, 0], duration: 500, complete: function() { taskItem.remove(); } });
+                // Animación de completado
+                $(this).find('i').css('opacity', '1');
+                $(this).css({
+                    'background-color': '#a78bfa',
+                    'border-color': '#8b5cf6'
+                });
+                
+                anime({
+                    targets: taskElement[0],
+                    scale: 0.95,
+                    duration: 200,
+                    easing: 'easeInOutQuad',
+                    complete: function() {
+                        tasks[index].completed = true;
+                        tasks[index].completionDate = new Date().toLocaleDateString('es-ES', {
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'long'
+                        });
+                        
+                        // Mover a completadas
+                        completedTasks.unshift(tasks[index]);
+                        tasks.splice(index, 1);
+                        
+                        renderTasks();
+                        $('#completedTasksSection').removeClass('hidden');
+                        
+                        // Mostrar notificación
+                        const notification = $(`
+                            <div class="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center">
+                                <i class="fas fa-check-circle mr-2"></i>
+                                Tarea completada
+                            </div>
+                        `);
+                        $('body').append(notification);
+                        
+                        anime({
+                            targets: notification[0],
+                            opacity: [0, 1],
+                            translateY: [20, 0],
+                            duration: 300,
+                            easing: 'easeOutExpo',
+                            complete: function() {
+                                setTimeout(function() {
+                                    anime({
+                                        targets: notification[0],
+                                        opacity: 0,
+                                        translateY: -20,
+                                        duration: 300,
+                                        easing: 'easeInExpo',
+                                        complete: function() {
+                                            notification.remove();
+                                        }
+                                    });
+                                }, 2000);
+                            }
+                        });
+                    }
+                });
             });
             
-            $('#showCompleted').click(function() {
-                $('#completedModal').removeClass('hidden');
+            // Eliminar tarea
+            $('#taskList').on('click', '.delete-btn', function() {
+                const taskElement = $(this).closest('.task-item');
+                const index = taskElement.data('index');
+                
+                anime({
+                    targets: taskElement[0],
+                    opacity: 0,
+                    translateX: 60,
+                    duration: 300,
+                    easing: 'easeInExpo',
+                    complete: function() {
+                        tasks.splice(index, 1);
+                        renderTasks();
+                    }
+                });
             });
             
-            $('#closeModal').click(function() {
-                $('#completedModal').addClass('hidden');
+            // Mostrar/ocultar tareas completadas
+            $('#showCompletedBtn').click(function() {
+                $('#completedTasksSection').slideToggle(300);
+                $(this).find('i').toggleClass('fa-history fa-times');
             });
+            
+            // Limpiar tareas completadas
+            $('#clearCompletedBtn').click(function() {
+                if (completedTasks.length > 0) {
+                    if (confirm('¿Estás seguro de que quieres eliminar todas las tareas completadas?')) {
+                        anime({
+                            targets: '#completedTasksList .completed-task-item',
+                            opacity: 0,
+                            translateX: -60,
+                            duration: 300,
+                            delay: anime.stagger(100),
+                            easing: 'easeInExpo',
+                            complete: function() {
+                                completedTasks = [];
+                                renderTasks();
+                                $('#completedTasksSection').addClass('hidden');
+                            }
+                        });
+                    }
+                }
+            });
+            
+            // Renderizar tareas al cargar
+            renderTasks();
+            
+            // Mostrar placeholder aleatorio
+            const placeholders = [
+                "¿Qué necesitas hacer hoy?",
+                "Escribe tu próxima tarea...",
+                "¿Cuál es tu objetivo hoy?",
+                "Pequeños pasos, grandes logros",
+                "Organiza tu día con calma"
+            ];
+            
+            setInterval(function() {
+                const randomIndex = Math.floor(Math.random() * placeholders.length);
+                $('#taskInput').attr('placeholder', placeholders[randomIndex]);
+            }, 3000);
         });
     </script>
 </body>
